@@ -147,3 +147,17 @@ p<-ggplot(data=filter(gapminder,country=="China"))+
     aes(x=year,y=lifeExp,size=pop),
     show.legend=FALSE )
 print(p)
+
+
+library(dplyr)
+library(griffen)
+library(tidyverse)
+
+Mi<-lm(log(wage)~educ_years+age+(age2=(age)^2), data=cps)
+print(Mi)
+EducationCo<-Mi$coefficients["educ_years"]
+print(EducationCo)
+
+
+
+
