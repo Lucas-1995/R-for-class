@@ -159,5 +159,32 @@ EducationCo<-Mi$coefficients["educ_years"]
 print(EducationCo)
 
 
+#2021/11/30
+
+
+library(dplyr)
+library(griffen)
+library(tidyverse)
+
+MyFunction<-function(x){
+  Mi<-lm(log(wage)~educ_years+age+(age2=(age)^2), data=x)
+  EducationCo<-Mi$coefficients["educ_years"]
+  return(EducationCo)
+}
+
+MyFunction(cps)
+
+States<-cps%>%distinct(state)
+
+
+for(y in States){
+  M<-cps%>%filter(state==y)
+  States<-States%>%mutate(Co=MyFunction(M))
+}
+
+
+sort(Edu)
+Cps<-cps
+
 
 
