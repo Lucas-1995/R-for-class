@@ -188,3 +188,65 @@ Cps<-cps
 
 
 
+# install.packages("googlesheets")
+# library(googlesheets)
+# gs_auth(new_user = TRUE)
+install.packages("gsheet")
+library(gsheet)
+w<-gsheet2tbl("https://docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=0",sheetid=2)
+?gsheet2tbl
+
+install.packages("ggtext")
+install.packages("showtext")
+library(tidyverse)
+library(ggrepel)
+library(ggtext)
+
+library(showtext)
+font_add_google("Lato")
+showtext_auto()
+
+
+install.packages("hrbrthemes")
+install.packages("kableExtra")
+install.packages("babynames")
+install.packages("streamgraph")
+install.packages("viridis")
+install.packages("DT")
+install.packages("plotly")
+# Libraries
+library(tidyverse)
+library(hrbrthemes)
+library(kableExtra)
+options(knitr.table.format = "html")
+library(babynames)
+library(streamgraph)
+library(viridis)
+library(DT)
+library(plotly)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+
+# Load dataset from github
+data <- babynames %>% 
+  filter(name %in% c("Mary","Emma", "Ida", "Ashley", "Amanda", "Jessica",    "Patricia", "Linda", "Deborah",   "Dorothy", "Betty", "Helen")) %>%
+  filter(sex=="F")
+
+# Plot
+w %>%
+  filter( !X1 == "福島県" )%>%
+  filter( !X1 == "岩手県" )%>%
+  filter( !X1 == "宮城県" )%>%
+  pivot_longer(-X1,names_to = "Year", values_to = "Mortality")%>%
+  ggplot( aes(x=Year, y=Mortality, group=X1, color=X1)) +
+  geom_line() +
+  #scale_color_viridis(discrete = TRUE) +
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=14)
+  ) +
+  ggtitle("Disaster-related indirect mortality in municipalities of 3 Tohoku prefectures") +
+  theme_ipsum()
+
+
