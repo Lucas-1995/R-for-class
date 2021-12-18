@@ -250,3 +250,79 @@ w %>%
   theme_ipsum()
 
 
+
+#TEST
+library(purrr)
+#sqrt is the square root of x
+?sqrt
+sqrt(6)
+x<-c(1,6,9)
+
+#length gets the number of items in the vector
+for(i in length(x)){
+  x[i]<-sqrt(x[i])
+}
+print(x)
+
+#map creates a new bigger tibble
+#map(a list , a function)
+test<-map(x,sqrt)
+#map_dbl makes a normal size of tibble(?)
+test2<-map_dbl(x,sqrt)
+
+
+
+#tibble, list and vector are different data formats in R
+y <- list(name="abc", age=36, company="XYZ") 
+
+
+x<-c(9,16,25)
+doubler<-function(y){
+　2*y
+}
+doubler(x)
+map_dbl(x,doubler)
+map(x,doubler)
+mtcars
+#difference among map, map_dbl and map_df?
+#map returns list, map_dbl returns double vector, map_df returns data frame
+x<-map(mtcars,mean)
+x<-map_dbl(mtcars,mean)
+x<-map_df(mtcars,mean)
+m<- lm (mpg ~ cyl,mtcars)
+
+#str is a way to compactly display the structure of as arbitrary R object
+str(m)
+
+#a way to have access to coefficients of  a regression's result and get a specific coefficient
+m$coefficients["cyl"]
+
+#tidy() is a function to get a tidy table off the result of the regression
+library(broom)
+lm(mpg ~ cyl, mtcars)%>%broom::tidy()
+
+#dataframe in dataframe
+library(gapminder)
+library(tidyr)
+library(dplyr)
+gapminder_nested<-gapminder%>%group_by(country)%>%nest()
+
+#WTF is df?
+#df is a function?
+?df
+time_trend<-function(df){
+  lm(lifeExp ~ year,df)
+}
+
+# I think the advantage of R here is  x
+gapminder_models <- gapminder_nested %>% mutate(model = map(data,time_trend))
+m<-data    
+n<-df
+gapminder_models <-  gapminder_models %>% select(-model,-data)
+gapminder_coef<-gapminder_models %>% unnest(cols=c("tidy_model"))
+?tidy_model
+
+
+
+
+
