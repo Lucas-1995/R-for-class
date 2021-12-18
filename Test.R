@@ -325,4 +325,101 @@ gapminder_coef<-gapminder_models %>% unnest(cols=c("tidy_model"))
 
 
 
+#2021/12/18
+library(dplyr)
+library(tidyverse)
+library(gapminder)
+library(broom)
+
+gapminder_nested <-
+  gapminder %>%
+  group_by(country) %>%
+  nest()
+
+#df is a specific parameter for function making
+time_trend <- function(df){
+  lm(lifeExp ~ year,df)
+}
+x<-data
+
+time_trend(gapminder)
+
+gapminder_models <-
+  gapminder_nested %>%
+  mutate(model = map(data,time_trend))
+
+#
+gapminder_models <-
+  gapminder_models %>%
+  mutate(tidy_model = map(model,tidy))
+
+#tidy() can use regression function as a parameter and return a tibble
+lm(mpg ~ cyl,mtcars) %>% tidy()
+
+gapminder_models <-
+  gapminder_models %>%
+  select(-model,-data)
+
+#tear down the variable"tidy_model"
+gapminder_models <- gapminder_models %>%
+  unnest("tidy_model")
+
+#filter picks out all the rows under the variable term that equals to year
+#select picks out columns of the specific variable(here are country and estimate)
+#ungroup ?
+gapminder_coef <-
+  gapminder_models  %>%
+  filter(term=="year") %>%
+  select(country,estimate) %>%
+  arrange(-estimate) %>%
+  ungroup
+
+#left_join deals with 2 dataframes and use the left one as the standard
+#join:add columns from y to x, matching rows based on the keys
+gapminder_coef <-
+  gapminder_coef %>%
+  left_join(distinct(select(gapminder,country,continent)))
+?left_join
+
+gapminder_coef
+
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+#country_colors is a color scheme from gapminder 
+p <- p + scale_colour_manual(values = country_colors)
+#divide the graph into several one by continent
+p <- p + facet_wrap(. ~ continent)
+print(p)
+
+#theme and axis.text.x=element_text(angle=90) is a function to reverse the direction of text
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + theme(axis.text.x = element_text(angle = 90))
+print(p)
+
+#str is structure
+str(gapminder_coef)
+
+# 
+# gapminder_coef$country <- factor(gapminder_coef$country,levels=gapminder_coef$country)
+gapminder_coef <-
+  gapminder_coef %>%
+  mutate(country = factor(country))
+
+gapminder_coef <-
+  gapminder_coef %>%
+  mutate(country1 = fct_reorder(country,-estimate))
+
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + coord_flip()
+# p <- p + theme(axis.text.y = element_text(size=7))
+#p <- p + theme(axis.text.x = element_text(angle = 90))
+print(p)
+
 
