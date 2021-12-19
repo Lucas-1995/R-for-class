@@ -422,4 +422,44 @@ p <- p + coord_flip()
 #p <- p + theme(axis.text.x = element_text(angle = 90))
 print(p)
 
+#2021/12/19 Graphics in R
+#gganimate
+#extrafont includs many fonts we can use for graph
+install.packages("extrafont")
+library(ggthemes)
+library(extrafont)
+font_import()
+loadfonts(device="win")       #Register fonts for Windows bitmap output
+m<-fonts()            
+windowsFonts()
+p <- ggplot(data = gapminder, aes(x = log(gdpPercap) ,
+                                  y = lifeExp,color=country, size=pop))+
+    geom_point(alpha = 0.7, show.legend = FALSE)+
+    scale_colour_manual(values = country_colors)+
+    facet_wrap(. ~ continent,ncol=5)+
+    theme_few()+
+  #the way to change text's characteristics, size, etc.
+    theme(axis.title.y = element_text(face="bold",size=11),
+          axis.title.x = element_text(face="bold",size=11),
+          text=element_text(family="Serif"))
+print(p)
+
+install.packages("gganimate")
+install.packages("gifski")
+library(gganimate)
+library(gifski)
+library(gapminder)
+library(Rcpp)
+p <- ggplot(data = gapminder, aes(x = log(gdpPercap) ,
+                                  y = lifeExp,color=country, size=pop))
+p <- p + geom_point(alpha = 0.7, show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + facet_wrap(. ~ continent,ncol=5)
+p <- p + labs(title = 'Year: {frame_time}', x = 'log GDP per capita', y = 'Life expectancy')
+p <- p + transition_time(year) + ease_aes('linear')
+animate(p, duration = 7,
+        renderer = gifski_renderer("./Media/rosling.gif"),
+        height = 350, width = 600, units = "px")
+
+
 
