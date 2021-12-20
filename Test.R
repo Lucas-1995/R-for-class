@@ -462,4 +462,81 @@ animate(p, duration = 7,
         height = 350, width = 600, units = "px")
 
 
+#2021/12/20 lecture 8
+library(griffen)
+library(dplyr)
+library(tidyverse)
+library(ggthemes)
+#keep age and year and mean wage by them
+Cps<-cps%>%select(wage, age, year)%>%group_by(age,year)%>%
+           summarise(average_wage=mean(wage,na.rm=TRUE))%>%
+           arrange(year)
+p<-ggplot(data=Cps,aes(x=age, y=average_wage)) +
+  geom_point(show.legend = FALSE) +
+  scale_colour_manual()+ #?is this one necessary?
+  labs(title = 'Year:{frame_time}', x='Age of Americans', y ='Average wage')+
+  theme_few()+
+  transition_time(as.integer(year)) + ease_aes('linear')
+animate(p, duration=10,
+        renderer = gifski_renderer("D:/Rtest/cps challenge.gif"),
+        height = 350, width = 600, units ="px")
+  
+
+#profe's code
+cps_wage <- cps %>%
+  group_by(year,age) %>%
+  summarise(mean_wage = mean(wage,na.rm=TRUE), .groups = "drop")
+p <- ggplot(data = cps_wage, aes(x = age , y = mean_wage))
+p <- p + geom_point()
+p <- p + labs(title = 'Year: {frame_time}', x = 'Age', y = 'Average Wage')
+p <- p + transition_time(year) + ease_aes('linear')
+animate(p, duration = 10,
+        renderer = gifski_renderer("./Media/cps2.gif"),
+        height = 350, width = 600, units = "px")
+
+
+
+
+#group by education
+cps_wage_educ <-
+  cps %>%
+  group_by(year,age,education_category) %>%
+  summarise(mean_wage = mean(wage,na.rm=TRUE), .groups = "drop")
+#to change the variable education_category into factor
+#just use factor()
+cps_wage_educ <-
+  cps_wage_educ %>%
+  mutate(education_category = factor(education_category))
+#fct_relevel reorders factor levels by hand
+#Before:college,highschool,somecollege (by alpgabet)
+#New:college, somecollege,highschool
+cps_wage_educ <-
+  cps_wage_educ %>%
+  mutate(education_category =
+           fct_relevel(education_category,c("college","somecollege","highschool")))
+str(cps_wage_educ)
+
+library(wesanderson)
+#animate for more possibilities 
+#3 labels ->3 small graphs
+educ_labels <- c(college = "College",
+                 somecollege = "Some College",
+                 highschool = "High School")
+#Besides x and y, color is used to recognize education situations
+p <- ggplot(data = cps_wage_educ,
+            aes(x = age , y = mean_wage, color = education_category))
+#scatter points
+p <- p + geom_point()
+#make graghs by education_category by facet_wrap
+p <- p + facet_wrap(. ~ education_category,
+                    labeller = labeller(education_category = educ_labels))
+#use a palette from the package wesanderson
+p <- p + scale_colour_manual(values = wes_palette("Darjeeling1"))
+#defer legend
+p <- p + theme(legend.position = "none")
+p <- p + theme_few()
+p <- p + labs(title = 'Year: {frame_time}', x = 'Age', y = 'Average Wage')
+p <- p + transition_time(as.integer(year)) + ease_aes('linear')
+animate(p, duration = 10, renderer = gifski_renderer("D:/Rtest/cps Anotherchallenge.gif"),
+        height = 350, width = 600, units = "px")
 
