@@ -540,3 +540,98 @@ p <- p + transition_time(as.integer(year)) + ease_aes('linear')
 animate(p, duration = 10, renderer = gifski_renderer("D:/Rtest/cps Anotherchallenge.gif"),
         height = 350, width = 600, units = "px")
 
+#2021/12/26
+#Lecture 9 :optimization, modelr, BART
+library(tidyverse)
+library(modelr)
+
+#optim(initial parameter guess ,function to be minimized, ...)
+#par	The best set of parameters found.
+#value	The value of fn corresponding to par.
+#counts A two-element integer vector giving the number of calls to fn and gr respectively. This excludes those calls needed to compute the Hessian, if requested, and any calls to fn to compute a finite-difference approximation to the gradient.
+#how to use optim for minimizing functions
+test_optim <- function(b){(b[1]-2)^4 + 3*b[2]^2}
+test_optim(c(0,0))
+optim(c(0,0),test_optim)
+
+#more advanced (minimizing)
+#3 independent variables
+test_optim <- function(b,a){(b[1]-a)^2 + 3*b[2]^2}
+test_optim(c(0,0),a=7)
+#we need to insert the argument"a" in the end
+optim(c(0,0),test_optim,a=7)
+# If we change the additional argument, what optim returns changes either
+optim(c(0,0),test_optim,a=4)
+
+#maximizing
+test_optim <- function(b){-b[1]^4 - 3*b[2]^2}
+optim(c(1,1),test_optim)
+#control=list(fnscale=-1) is the point to make it looking for a maximum
+optim(c(1,1),test_optim,control=list(fnscale=-1))
+
+
+library(devtools)
+library(griffen)
+f <- y ~ x1
+form_df
+model_matrix(form_df , f)
+#Another way to code
+form_df %>% model_matrix(f)
+#Matrix is a new data structure
+form_df %>% model_matrix(f) %>% as.matrix()
+#same same same
+model_matrix(form_df , y ~ x1)
+model_matrix(form_df , ~ x1)
+model_matrix(form_df , ~ x1 + x2)
+#same same different ways to use model_matrix
+model_matrix(form_df , ~ x1*x2)
+model_matrix(form_df , ~ x1 + x2 + x1*x2)
+model_matrix(form_df , ~ x1:x2)
+test<-model_matrix(form_df , ~ x1:x2 - 1)
+#Y~X..... means after ~ there are the names of the variables
+model_matrix(form_df , ~ D)
+form_df %>% str()
+# This is how to get sth out of the tibble
+form_df$y[2]
+p$data[2]
+
+#fct_relevel :Reorder factor levels 
+#In matrix it must be number 
+#So here shows how factor(chr)was turned into dbl(1 or 0)
+#!!IMPORTANT:if it's the 1st factor , it'll be turned into 1;if it's not, 0.
+m3<-form_df %>%
+  mutate(D = fct_relevel(D,"treated")) %>%
+  model_matrix(~ D)
+
+# the difference between these is that *put the result and all the variables
+#  :just put the result of D multiply x1
+# here are 2 columns of the results in :'s case
+model_matrix(form_df , ~ D*x1)
+model_matrix(form_df , ~ D:x1)
+
+#if input is a dataframe df should be used
+#b is a formula object
+Fk<-function(df,b){
+  x <- df%>%model_matrix(b)%>%as.matrix()
+  y <- df%>%select(all.vars(b)[1])%>%pull()
+  #x'=t()  transpose a (x) matrix
+  #x^-1=solve()   invert a (x) matrix 
+  z <- solve(t(x) %*% x) %*% t(x) %*% y
+  return(z)
+}
+#why it is the same as lm
+Fk(mtcars,mpg ~ cyl + disp + hp)
+lm(mpg ~ cyl + disp + hp, data = mtcars)
+# M1<-matrix(1:3,ncol=3,nrow=3)
+# M2<-matrix(3:1)
+# a <- matrix(c(0,1,2,3,4,5,6,7,9),3,3) #3y + 6z =  1
+# b <- matrix(c(1,0,-2))                #x + 4y + 7z =  0
+# solve(a)
+# T1<-solve(A)
+
+#2021/12/27
+Vector1<-pre_bart%>%drop_na()
+v<-Vector1$mode
+post_bart 
+
+
