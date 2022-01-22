@@ -634,4 +634,60 @@ Vector1<-pre_bart%>%drop_na()
 v<-Vector1$mode
 post_bart 
 
+#2022/01/22
+library(griffen)
+library(sjPlot)
+library(tidyverse)
+pre<-pre_bart
+pre$mode<-factor(pre$mode)
 
+
+
+# filter training data with those mode equal to bus
+train <- train %>% filter(!mode == "bus")
+test <- test %>% filter(!mode == "bus")
+# training
+
+
+# post<-post_bart
+Logit<-glm(d ~ price + time + wage + mode, data = train,family = "binomial")
+# tab_model(Logit,p.style = "stars",show.std = TRUE)
+
+fitted.results<-predict(Logit, newdata=subset(test,select=2:5),type='response')
+
+summary(fitted.results)
+fitted.results<-ifelse(fitted.results>0.5,1,0)
+misClasificError<-mean(fitted.results != test$d)
+print(paste('Accuracy', 1-misClasificError))
+"Accuracy 0.842696629213483"
+
+# confint(Logit)
+NewData<-with(train, data.frame(id=id,mode=mode,price=price,time=time,wage=wage))
+NewData$d<-predict(Logit,newdata=NewData, type="response")
+
+# params vector 
+params <-Logit$coefficients
+str(pre)
+Pre<-pre
+# Prediction<-function(df){
+#   # split train and test data, [1:8000,] [8001,12000] train = pre[1:8000,]
+#   train <- df[1:9000,]
+#   test <- df[9001:12000,]
+#   
+#   # post<-post_bart
+#   Logit<-glm(d ~ price + time + wage + mode, data = train,family = "binomial")
+#   Coe <-Logit$coefficients
+#   
+#   d=Coe[1]+Coe[2]*price+Coe[3]*time+Coe[4]*wage+Coe[5]*mode
+#   return(d)
+# }
+
+#IMPORTANT HOMEWORK3
+Logit<-glm(d ~ price + time + wage, data = pre_bart,family = "binomial")
+Coe <-Logit$coefficients
+
+Result_bart<-pre_bart
+Result_bart$mode<-factor(Result_bart$mode)
+
+Result_bart <- Pre_bart %>% 
+  mutate(v =exp((Coe[1]+Coe[2]*price+Coe[3]*time+Coe[4]*wage)))
