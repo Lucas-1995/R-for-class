@@ -691,3 +691,78 @@ Result_bart$mode<-factor(Result_bart$mode)
 
 Result_bart <- Pre_bart %>% 
   mutate(v =exp((Coe[1]+Coe[2]*price+Coe[3]*time+Coe[4]*wage)))
+
+#2022/01/28
+install.packages("tidyverse")
+install.packages("devtools")
+library(devtools)
+library(tidyverse)
+install_github("andrew-griffen/griffen") 
+library(griffen)
+library(modelr)
+Sys.setenv(LANG = "en")
+
+#IMPORTANT HOMEWORK3
+#Prepare training dataframe to feed the logit model
+pre_bart_estimation<-pre_bart%>%na.omit()
+
+#to use logit model to get coefficients
+Logit<-glm(d ~ price + time + wage, data = pre_bart_estimation,family = "binomial")
+
+#Multiply matrix of original data and co to induce v
+#To change list to matrix
+b <- as.matrix(Logit$coefficients)
+
+#to contain NA globally
+options(na.action='na.pass')
+#Ta get another matrix as test dataframe
+m <- post_bart %>% model_matrix(d ~ price + time + wage) %>% as.matrix()
+#To set "contain NA" back
+current.na.action <- options('na.action')
+
+#to multiply matrix , they have to be adjusted
+v <- t(b) %*% t(m)
+V<-as.vector(v)
+
+#INSERT many variables
+#Change the dataframe to change what to be used as predictors
+#Q1how to compare?
+Predict_bart <- post_bart %>% mutate(ev=exp(V)) %>%  
+  group_by(id) %>%  mutate(sum_v=sum(ev))%>% 
+  mutate(p=ev/sum_v) %>% mutate(lnp=log(p)) %>% 
+  select(!"sum_v"&!"ev") %>% ungroup() 
+
+#Actual Share
+  car_share1 <- Predict_bart %>% filter(mode=="car") 
+  Car1<-sum(car_share1$d)/4000
+  metro_share1 <- Predict_bart %>% filter(mode=="metro") 
+  Metro1<-sum(metro_share1$d)/4000
+  bus_share1 <- Predict_bart %>% filter(mode=="bus") 
+  Bus1<-sum(bus_share1$d)/4000
+
+#Predicted Share
+  car_share2 <- Predict_bart %>% filter(mode=="car") 
+  Car2<-sum(car_share2$p)/4000
+  metro_share2 <- Predict_bart %>% filter(mode=="metro") 
+  Metro2<-sum(metro_share2$p)/4000
+  bus_share2 <- Predict_bart %>% filter(mode=="bus") 
+  Bus2<-sum(bus_share2$p)/4000
+  
+#COMPARISON of actual share and predicted share
+  Mode <- c("Car", "Metro", "Bus")
+  Actual<-c(Car1,Metro1,Bus1)
+  Predicted<-c(Car2,Metro2,Bus2)
+  Com<-tibble(Mode,Actual,Predicted)
+  
+# #Log-likelihood function
+# #optim here is for looking for a best situation that as many as people are benefited
+# #Q2why error?
+# LLF<-function(df){
+#   d<-df%>%pull(d)
+#   lnp<-df%>%pull(lnp)
+#   logl<-sum(d*lnp)
+#   return(logl)
+# }
+# optim(c(0,0), LLF, post_bart)
+
+
