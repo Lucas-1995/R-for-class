@@ -765,4 +765,141 @@ Predict_bart <- post_bart %>% mutate(ev=exp(V)) %>%
 # }
 # optim(c(0,0), LLF, post_bart)
 
+#2022/01/31
+#front end design
+install.packages("shiny")
+install.packages("shinythemes")
+install.packages("gapminder")
+library(shiny)
+library(bslib)
+library(shinythemes)
+library(tidyverse)
+library(griffen)
+library(gapminder)
+
+#how to use textInput, passwordInput and textAreaInput
+ui<-fluidPage(
+  #front end interface
+  textInput("user name","Please enter user name:"),
+  passwordInput("password","Please enter password:"),
+  textAreaInput("comment","Comment",row = 3)
+)
+
+#how to use numericInput and sliderInput
+ui<-fluidPage(
+  numericInput("input1","Number one",value=0,min=0,max=100),
+  sliderInput("input2","Number two", value=50,min=0,max=100),
+  sliderInput("range","Range",value=c(10,20),min=0,max=100)
+)
+
+#how to use selectInput and radioButtons
+continents<-gapminder%>%select(continent)%>%distinct()%>%arrange(continent)
+ui<-fluidPage(
+  selectInput("continent1","Where do you live?",continents),
+  radioButtons("continent2","Where do you live?",continents)
+)
+
+#just show the html
+fluidPage(
+  textInput("name","What's your name?")
+)
+server<-function(input,output, session){
+  #back end logic
+}
+
+#Reactivity 1:Output name
+ui<-fluidPage(
+  textInput("name","What's your name?"),
+  textOutput("greeting")
+)
+server<-function(input,output, session){
+  output$greeting<-renderText({
+    paste0("Hello ",input$name,"!")
+  })
+}
+
+#Reactivity 2: Output number
+ui<-fluidPage(
+  numericInput("count",label="Number of values",value=100),
+  textOutput("double")
+)
+server<-function(input,output,session){
+  output$double<-renderPrint(2*input$count)
+}
+
+#Reactivity 3:output histogram
+ui<-fluidPage(
+  numericInput("samplesize",label="Sample size",value=100),
+  plotOutput("histogram")
+)
+server<-function(input,output,session){
+  output$histogram<-renderPlot(qplot(rnorm(input$samplesize)))
+}
+
+#more example
+#Not sure what this is?
+fluidPage(
+  titlePanel(
+    "What is this"
+    #app title/description
+  ),
+  sidebarLayout(
+    sidebarPanel(
+      "?"
+      #inputs
+    ),
+    mainPanel(
+      "!"
+      #outputs
+    )
+  )
+)
+bootswatch_themes()
+shinyApp(ui, server)
+source("")
+
+#########################
+#lecture 13 machine learning
+# the packages for machine learning
+install.packages("ROCR")
+install.packages("caret")
+install.packages("gbm")
+install.packages("rpart")
+install.packages("dlstats")
+library(dlstats)
+library(ROCR)
+library(caret)
+library(gbm)
+library(rpart)
+
+ml_vs_tidyverse<-cran_stats(c("glmnet","caret","parsnip","tidyverse"))%>%as_tibble()
+ml_vs_tidyverse<-ml_vs_tidyverse%>%mutate(year=year(start))
+#ml_vs_tidyverse<-ml_vs_tidyverse%>%filter(year>=2020)
+ml_vs_tidyverse<-ml_vs_tidyverse%>%group_by(package)%>%slice(1:(n()-1))
+
+#an example of splitting a data to training and testing part and then build a model
+devtools::install_github("andrew-griffen/griffen")
+#dataset is heights from griffen
+sex<-heights$sex
+ht<-heights$height
+
+#create
+set.seed(2007)
+index<-caret::createDataPartition(sex,times=1,p=0.8,list=FALSE)
+#partition into test and training
+train_heights<-heights[index,]
+#if we make the index into minus, it starts from the end of the dataset
+test_heights<-heights[-index,]
+heights%>%group_by(sex)%>%dplyr::summarize(mean(height),sd(height))
+accuracy<-function(cutoff,df){
+  mean(
+    ifelse(df$height>cutoff,"Male","Female"==df$sex)
+  )
+}
+predicted<-function(cutoff,df){
+  factor(
+    ifelse(df$height>cutoff,"Male","Female"),
+    levels=levels(heights$sex)
+  )
+}
 
