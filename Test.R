@@ -903,3 +903,76 @@ predicted<-function(cutoff,df){
   )
 }
 
+#2022/02/05 final report
+#ZHENG XIANG
+#Student_ID:47-216756
+#Email:zhengxiangemerge@gmail.com
+#Submission: PDF of ~10 pages and Rmd
+#Steps to finish the final Project by rmarkdown (pdf):
+# 1.Identify a data set.
+# 2.Describe the data source
+# 3.Describe the sample
+# 4.Show interesting features of the data
+# 5.Additional analysis or conclusion
+
+
+install.packages("tinytex")
+install.packages("gsheet")
+install.packages("tidyverse")
+install.packages("caret")
+library(gsheet)
+library(tidyverse)
+library(caret)
+library(modelr)
+#TD:Total death number
+#of every municipality in 3 prefectures (Iwate,Miyagi,Fukushima)between 2000-2020 
+#IdN:Indirect death number
+#Data source: E-stat(https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&toukei=00200241&tstat=000001039591&cycle=7&tclass1=000001039601&tclass2val=0)
+
+Train<-gsheet2tbl("https://docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=1056158218")
+Test<-gsheet2tbl("https://docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=1669668493")
+
+
+
+#Ln (Counts of death / Population) = a + β1×DirectMortality + β2×Income + β3×DependentRatio + β4×NuclearImpac + β5×Distance to epicenter,
+#re-arranged as ln(Counts of death) = a + β1×DirectMortality + β2×Income + β3×DependentRatio + β4×NuclearImpac + β5×Distance to epicenter +ln (population)
+Logit<-glm(log(IndiMortality) ~ DirectMortality + Income + DependentRatio + Distance_epicenter + log(Population), data = Train)
+
+#Multiply matrix of original data and co to induce v
+#To change list to matrix
+b <- as.matrix(Logit$coefficients)
+
+#to contain NA globally
+options(na.action='na.pass')
+#Ta get another matrix as test dataframe
+m <- Test %>% model_matrix(log(IndiMortality) ~ DirectMortality + Income + DependentRatio + Distance_epicenter + log(Population)) %>% as.matrix()
+#To set "contain NA" back
+current.na.action <- options('na.action')
+
+#to multiply matrix , they have to be adjusted
+v <- t(b) %*% t(m)
+V<-as.vector(v)
+
+#INSERT many variables
+#Change the dataframe to change what to be used as predictors
+Predict <- Test %>% mutate(ev=exp(V)) %>% 
+  mutate(Predicted_number =as.integer(ev))   %>% 
+  mutate(Actual_number =as.integer(IndiMortality))%>%
+  select(-2:-8)
+
+
+#Draw the comparison
+# create a dataset
+DATA <- Predict %>% pivot_longer(-Municipality,names_to="Type",values_to="Number")
+
+ggplot(data=DATA, aes(factor(Municipality), Number, fill = Type)) + 
+  geom_bar(stat="identity", position = "dodge") + 
+  coord_flip() +
+  scale_fill_brewer(palette = "Set1") +
+  labs(y = "Indirect death number", x = "Municipality")+
+  ggtitle("Comparison of indirect death in Tohoku Area") +
+  theme_light()
+
+
+
+
