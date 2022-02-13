@@ -974,5 +974,466 @@ ggplot(data=DATA, aes(factor(Municipality), Number, fill = Type)) +
   theme_light()
 
 
+install.packages("griffen")
+library(ggplot2)
+library(griffen)
+library(forcats)
+
+p <- ggplot(data = cps,
+            mapping = aes(x=state)) +
+  geom_bar() +
+  coord_flip() +
+  labs(y = "College Graduation Rate", x = "")
+?geom_bar
+print(p)
+
+college_graduation_rate <- cps%>%
+  group_by(state)%>%
+  summarise(population=n())
+
+
+
+#########
+college_graduation_rate <- cps%>%
+  group_by(state)%>%
+  mutate(population=n())%>%
+  filter(education_category=="college")%>%
+  summarise(region,college_graduation_rate=n()/population)%>%
+  distinct()%>%
+  arrange(college_graduation_rate)
+
+p <- ggplot(data    = college_graduation_rate,
+            mapping = aes(fct_reorder(state,college_graduation_rate),college_graduation_rate)) +
+  geom_point() +
+  coord_flip() +
+  labs(y = "College Graduation Rate", x = "")
+
+print(p)
+
+
+
+#2021/12/11
+
+library(dplyr)
+library(ggplot2)
+
+#Import sheet from GoogleDoc
+install.packages("gsheet")
+library(gsheet)
+w<-gsheet2tbl('docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=1911485851')
+
+# try<-read.csv("C:/Users/BB/Desktop/Semi/8-要因分析20211213//Dataset - Try.csv")
+Regre<-lm(log(IndiMortality)~ DirectMortality + Income + TransferredVa + DependentRatio + NuclearImpac, data=w)
+summary(Regre)
+
+plot(w%>%select(IndiMortality,DirectMortality,Income,DependentRatio))
+
+
+#3D regression
+install.packages("rgl")
+install.packages("car")
+library(rgl)
+library(car)
+model4 =lm(IndiMortality~Income+DRAP+ Nuclear + DirectMortality,w)
+summary(model4)
+scatter3d(x=IndiMortality, y=Income, z=DRAP, data=w)
+?scatter3d
+
+# Using a fitted lm model
+install.packages('jtools')
+library(jtools)
+library(tidyverse)
+try<-try%>%mutate(log_income=log(Income))
+fit <- lm(IndiMortality ~ log_income,data = try)
+effect_plot(fit, pred = log_income, interval = TRUE, partial.residuals = TRUE)
+
+# attach(w)    
+# cor(IndiMortality, Income,  method="kendall")  
+# par(family="HiraKakuPro-W3")
+# plot(IndiMortality, Income) 
+# abline(lm(IndiMortality~Income), col="red")
+# warnings()
+
+install.packages("drc")
+library(drc)
+library(ggplot2)
+MM.model <- drm(IndiMortality~Income, data=w, fct=MM.2())
+mmdf <- data.frame(S=seq(0,max(w$Income),length.out=100))
+mmdf$v <- predict(MM.model, newdata=mmdf)
+ggplot(w, aes(x = S, y = v)) +
+  theme_bw() +
+  xlab("Concentration [mM]") +
+  ylab("Speed [dE/min]") +
+  ggtitle("Techvidvan Michaelis-Menten kinetics") +
+  geom_point(alpha = 0.5) +
+  geom_line(data = mmdf, 
+            aes(x = S, y = v), 
+            colour = "green")
+
+#2021/12/18
+library(dplyr)
+library(tidyverse)
+library(gapminder)
+library(broom)
+
+gapminder_nested <-
+  gapminder %>%
+  group_by(country) %>%
+  nest()
+
+#df is a specific parameter for function making
+time_trend <- function(df){
+  lm(lifeExp ~ year,df)
+}
+x<-data
+
+time_trend(gapminder)
+
+gapminder_models <-
+  gapminder_nested %>%
+  mutate(model = map(data,time_trend))
+
+#
+gapminder_models <-
+  gapminder_models %>%
+  mutate(tidy_model = map(model,tidy))
+
+#tidy() can use regression function as a parameter and return a tibble
+lm(mpg ~ cyl,mtcars) %>% tidy()
+
+gapminder_models <-
+  gapminder_models %>%
+  select(-model,-data)
+
+#tear down the variable"tidy_model"
+gapminder_models <- gapminder_models %>%
+  unnest("tidy_model")
+
+#filter picks out all the rows under the variable term that equals to year
+#select picks out columns of the specific variable(here are country and estimate)
+#ungroup ?
+gapminder_coef <-
+  gapminder_models  %>%
+  filter(term=="year") %>%
+  select(country,estimate) %>%
+  arrange(-estimate) %>%
+  ungroup
+
+#left_join deals with 2 dataframes and use the left one as the standard
+#join:add columns from y to x, matching rows based on the keys
+gapminder_coef <-
+  gapminder_coef %>%
+  left_join(distinct(select(gapminder,country,continent)))
+?left_join
+
+gapminder_coef
+
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+#country_colors is a color scheme from gapminder 
+p <- p + scale_colour_manual(values = country_colors)
+#divide the graph into several one by continent
+p <- p + facet_wrap(. ~ continent)
+print(p)
+
+#theme and axis.text.x=element_text(angle=90) is a function to reverse the direction of text
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + theme(axis.text.x = element_text(angle = 90))
+print(p)
+
+#str is structure
+str(gapminder_coef)
+
+# gapminder_coef$country <- factor(gapminder_coef$country,levels=gapminder_coef$country)
+gapminder_coef <-
+  gapminder_coef %>%
+  mutate(country = factor(country))
+
+#fct_reorder changes something of dataframe and you cannot see by clicking data
+#fct_reorder() is useful for 1d displays where the factor is mapped to position
+gapminder_coef <-
+  gapminder_coef %>%
+  mutate(country1 = fct_reorder(country,-estimate))
+
+p <- ggplot(gapminder_coef,
+            aes(x = country , y = estimate, color=country))
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + coord_flip()
+# p <- p + theme(axis.text.y = element_text(size=7))
+p <- p + theme(axis.text.y = element_text(angle = 90))
+print(p)
+
+
+
+p <- ggplot(gapminder_coef,
+            
+            aes(x = country , y = estimate, color=country))
+
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+#change the directions of x and y axis
+p <- p + coord_flip()
+#It turns axis y's text to size=7
+p <- p + theme(axis.text.y = element_text(size=6))
+
+
+
+
+
+#Add x label and y label and title and subtitle
+p <- ggplot(gapminder_coef,
+            
+            aes(x = country , y = estimate, color=country))
+
+p <- p + geom_point(show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + coord_flip()
+p <- p + theme(axis.text.y = element_text(size=7))
+p <- p + labs(x = "", y = "Years")
+p <- p + labs(title = "Annual increase in life expectancy by country",
+              subtitle = "1952 - 2007")
+#Add source
+p <- p + labs(caption = "Source: Gapminder data")
+print(p)
+
+p<-theme()
+
+#2021/12/19 Graphics in R
+#gganimate
+#extrafont includs many fonts we can use for graph
+install.packages("extrafont")
+library(ggthemes)
+library(extrafont)
+font_import()
+loadfonts(device="win")       #Register fonts for Windows bitmap output
+m<-fonts()            
+windowsFonts()
+p <- ggplot(data = gapminder, aes(x = log(gdpPercap) ,
+                                  y = lifeExp,color=country, size=pop))+
+  geom_point(alpha = 0.7, show.legend = FALSE)+
+  scale_colour_manual(values = country_colors)+
+  facet_wrap(. ~ continent,ncol=5)+
+  theme_few()+
+  #the way to change text's characteristics, size, etc.
+  theme(axis.title.y = element_text(face="bold",size=11),
+        axis.title.x = element_text(face="bold",size=11),
+        text=element_text(family="Serif"))
+print(p)
+
+install.packages("gganimate")
+install.packages("gifski")
+library(gganimate)
+library(gifski)
+library(gapminder)
+library(Rcpp)
+p <- ggplot(data = gapminder, aes(x = log(gdpPercap) ,
+                                  y = lifeExp,color=country, size=pop))
+p <- p + geom_point(alpha = 0.7, show.legend = FALSE)
+p <- p + scale_colour_manual(values = country_colors)
+p <- p + facet_wrap(. ~ continent,ncol=5)
+p <- p + labs(title = 'Year: {frame_time}', x = 'log GDP per capita', y = 'Life expectancy')
+#ease_aes means each frame should take the same amount of time
+p <- p + transition_time(year) + ease_aes('linear')
+print(p)
+??Rcpp_precious_remove
+animate(p, duration = 7,
+        renderer = gifski_renderer("./Media/rosling.gif"),
+        height = 350, width = 600, units = "px")
+anim_save("zhengxiang.gif")
+
+
+
+#2021/12/26
+#Lecture 9 :optimization, modelr, BART
+library(tidyverse)
+library(modelr)
+
+#optim(initial parameter guess ,function to be minimized, ...)
+#par	The best set of parameters found.
+#value	The value of fn corresponding to par.
+#counts A two-element integer vector giving the number of calls to fn and gr respectively. This excludes those calls needed to compute the Hessian, if requested, and any calls to fn to compute a finite-difference approximation to the gradient.
+#how to use optim for minimizing functions
+test_optim <- function(b){(b[1]-2)^4 + 3*b[2]^2}
+test_optim(c(0,0))
+optim(c(0,0),test_optim)
+
+#more advanced (minimizing)
+#3 independent variables
+test_optim <- function(b,a){(b[1]-a)^2 + 3*b[2]^2}
+test_optim(c(0,0),a=7)
+#we need to insert the argument"a" in the end
+optim(c(0,0),test_optim,a=7)
+# If we change the additional argument, what optim returns changes either
+optim(c(0,0),test_optim,a=4)
+
+#maximizing
+test_optim <- function(b){-b[1]^4 - 3*b[2]^2}
+optim(c(1,1),test_optim)
+#control=list(fnscale=-1) is the point to make it looking for a maximum
+optim(c(1,1),test_optim,control=list(fnscale=-1))
+
+
+library(devtools)
+library(griffen)
+f <- y ~ x1
+form_df
+model_matrix(form_df , f)
+#Another way to code
+form_df %>% model_matrix(f)
+#Matrix is a new data structure
+form_df %>% model_matrix(f) %>% as.matrix()
+#same same same
+model_matrix(form_df , y ~ x1)
+model_matrix(form_df , ~ x1)
+model_matrix(form_df , ~ x1 + x2)
+#same same different ways to use model_matrix
+model_matrix(form_df , ~ x1*x2)
+model_matrix(form_df , ~ x1 + x2 + x1*x2)
+model_matrix(form_df , ~ x1:x2)
+test<-model_matrix(form_df , ~ x1:x2 - 1)
+#Y~X..... means after ~ there are the names of the variables
+model_matrix(form_df , ~ D)
+form_df %>% str()
+# This is how to get sth out of the tibble
+form_df$y[2]
+p$data[2]
+
+#fct_relevel :Reorder factor levels 
+#In matrix it must be number 
+#So here shows how factor(chr)was turned into dbl(1 or 0)
+#!!IMPORTANT:if it's the 1st factor , it'll be turned into 1;if it's not, 0.
+m3<-form_df %>%
+  mutate(D = fct_relevel(D,"treated")) %>%
+  model_matrix(~ D)
+
+# the difference between these is that *put the result and all the variables
+#  :just put the result of D multiply x1
+# here are 2 columns of the results in :'s case
+model_matrix(form_df , ~ D*x1)
+model_matrix(form_df , ~ D:x1)
+
+#if input is a dataframe df should be used
+#b is a formula object
+Fk<-function(df,b){
+  x <- df%>%model_matrix(b)%>%as.matrix()
+  y <- df%>%select(all.vars(b)[1])%>%pull()
+  #x'=t()  transpose a (x) matrix
+  #x^-1=solve()   invert a (x) matrix 
+  z <- solve(t(x) %*% x) %*% t(x) %*% y
+  return(z)
+}
+#why it is the same as lm
+Fk(mtcars,mpg ~ cyl + disp + hp)
+lm(mpg ~ cyl + disp + hp, data = mtcars)
+# M1<-matrix(1:3,ncol=3,nrow=3)
+# M2<-matrix(3:1)
+# a <- matrix(c(0,1,2,3,4,5,6,7,9),3,3) #3y + 6z =  1
+# b <- matrix(c(1,0,-2))                #x + 4y + 7z =  0
+# solve(a)
+# T1<-solve(A)
+
+#2021/12/27
+library(griffen)
+library(tidyverse)
+Vector1<-pre_bart%>%drop_na()
+v<-Vector1$mode
+post_bart 
+m<-pre_bart%>%drop_na()
+
+#2022/01/10
+# library
+library(ggridges)
+library(ggplot2)
+
+library(gsheet)
+w<-gsheet2tbl('https://docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=1911485851')
+w
+
+Regre<-lm(log(IndiMortality)~ DirectMortality + Income + TransferredVa + DependentRatio + NuclearImpac + log(Population), data=w)
+summary(Regre)
+
+# Diamonds dataset is provided by R natively
+#head(diamonds)
+
+world_bank_pop%>%pivot_longer(cols='2000':'2017')
+??pivot_longer
+# basic example
+ggplot(w, aes(x = price, y = cut, fill = cut)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+require(ggplot2)
+require(sandwich)
+require(msm)
+# load package
+install.packages("sjPlot")
+install.packages("sjmisc")
+install.packages("sjlabelled")
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(tidyverse)
+#direct mortality:1⁄1000
+www<-w%>%mutate(Mortality=1000*IndiMortality/Population)%>%mutate(DirectMortality=1000*DirectMortality/Population)
+summary(Poisson <- glm(log(IndiMortality)~ DirectMortality + Income   +DependentRatio + NuclearImpac+log(Population)+Distance_epicenter,  family = "poisson",data=www))
+summary(OLS <- lm(log(IndiMortality)~ DirectMortality + Income  + DependentRatio + NuclearImpac+log(Population)+Distance_epicenter, data=www))
+tab_model(Poisson,OLS, 
+          dv.labels = c("Poisson", "OLS"),
+          p.style = "stars",
+          show.std = TRUE)
+
+
+#total death toll statistic
+m<-gsheet2tbl('https://docs.google.com/spreadsheets/d/1AVfgO1hO51MVdrLoD-Xk49LouJ3wKULZWiz7An0dxNg/edit#gid=171183971')
+# # Libraries
+# library(ggplot2)
+# library(dplyr)
+# 
+# # Dummy data
+# data <- data.frame(
+#   day = as.Date("2017-06-14") - 0:364,
+#   value = runif(365) + seq(-140, 224)^2 / 10000
+# )
+# 
+# # Most basic bubble plot
+# p <- ggplot(m, aes(x=day, y=value)) +
+#   geom_line() + 
+#   xlab("")
+# p
+
+# Libraries
+library(ggplot2)
+library(dplyr)
+install.packages("hrbrthemes")
+library(hrbrthemes)
+library(viridis)
+install.packages("babynames")
+library(babynames)
+
+
+M<-m%>%pivot_longer(cols='2000':'2020',names_to="Year",values_to = "Deathtoll")
+# Plot
+X<-M %>%
+  ggplot( aes(x=Year, y=Deathtoll, group=Municipality, color=Municipality)) +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) +
+  ggtitle("Death number in municipalities of 3 prefectures from 2000~2020") +
+  theme_ipsum() +
+  ylab("Number of death")
+X + theme(legend.position = "none")
+
+
+
+try<-read.csv("https://coastal.jp/ttjt/index.php?plugin=attach&refer=%E7%8F%BE%E5%9C%B0%E8%AA%BF%E6%9F%BB%E7%B5%90%E6%9E%9C&openfile=ttjt_survey_29-Dec-2012_tidecorrected_web.csv")
+
+
+
+
 
 
