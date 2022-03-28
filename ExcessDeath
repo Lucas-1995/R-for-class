@@ -1,0 +1,152 @@
+#excess mortality predict 
+#2022/03/10
+library(devtools)
+library(tidyverse)
+library(griffen)
+library(modelr)
+library(gsheet)
+library(tidyverse)
+library(geofacet)
+library(ggh4x)
+Sys.setenv(LANG = "en")
+
+#De:Death among municipalities
+#pop:population of 2000-2019
+De<-gsheet2tbl('https://docs.google.com/spreadsheets/d/17nLI3dRjupplqALk2MTYKdcm2e6yrowhJLJdA4T1qhs/edit#gid=1271760604')
+pop<-gsheet2tbl("https://docs.google.com/spreadsheets/d/17nLI3dRjupplqALk2MTYKdcm2e6yrowhJLJdA4T1qhs/edit#gid=207845634")
+Pop<-pop %>% pivot_longer(cols='2000':'2019',names_to="Year",values_to = "Population")%>%
+  mutate(Year=as.numeric(Year))
+
+#Data organizing
+DE<-De%>%pivot_longer(cols='2000':'2020',names_to="Year",values_to = "Actual")%>%
+        filter(!Year %in%  c(2020))
+PredictDE <- DE %>% mutate(Predict=0)%>%filter(Year==1999)
+
+#Municipality's name
+MuniName <- DE %>% distinct(Municipality)
+
+for(i in rownames(MuniName)){
+#to use logit model to get coefficients
+  i = as.numeric(i)
+  Muni <- DE %>% filter(Municipality == MuniName$Municipality[i])
+  Muni$Year <- as.numeric(Muni$Year)#get each municipality's data
+  PreMuni <- Muni %>% filter(!Year %in%  c(2011,2012,2013,2014,2015,2016,2017))
+  Reg  <- glm(Actual ~ Year, data = PreMuni,family = "gaussian")#regression is here
+  m <- predict(Reg, newdata = Muni)
+  Muni <- Muni %>% mutate(Predict = as.integer(m))#use each predictor to get the new number
+  PredictDE <- rbind(PredictDE,Muni)
+  }
+
+
+
+PredictFE <- PredictDE %>% mutate(Actual=as.integer(Actual))%>%
+  inner_join(Pop)%>%
+  mutate(Actual=Actual/Population*10000)%>%
+  mutate(Predict=Predict/Population*10000)
+
+theme_set(theme_bw())
+
+
+
+##Temporary save (Original version)
+# plt <- ggplot(PredictFE, aes(x = Year, group=Municipality)) +
+#   geom_line(aes(y=Predict, color = "Estimated deaths",linetype="Estimated deaths")) + #Predicted deaths
+#   geom_line(aes(y=Actual, color = "Actual deaths",linetype="Actual deaths")) + #Actual deaths
+#   # Set breaks along both axes
+#   scale_x_continuous(breaks = c(2000,2011,2017)) +
+#   ylim(0,500)+
+# 
+#   stat_difference(aes(ymin =Predict , ymax = Actual), alpha = 0.3) +
+#   
+#   # Colors for the lines
+#   scale_color_manual(values = c("#3D85F7", "#C32E5A")) +
+#   # Colors for the fill. They are lighter versions of the line colors.
+#   # The third one is required because lines are sometimes equal
+#   scale_fill_manual(
+#     values = c(
+#       colorspace::lighten("#3D85F7"), 
+#       colorspace::lighten("#C32E5A"), 
+#       "grey60"
+#     ),
+#       labels = c("More death", "Less death", "Same")
+#   ) +
+#   
+#   facet_wrap(~Municipality, nrow = 15) +
+#   
+#   annotate("text", x = 2002, y = 50, label = "label 1")+
+#   annotate("text", x = 2002, y = 400, label = "label 2")+
+#   annotate("text", x = 2017, y = 400, label = "label 3")+
+#   annotate("text", x = 2017, y = 50, label = "label 4")+
+#   
+#   theme_bw()
+# 
+# # multi.page <- ggarrange(plt,)
+# 
+# ggsave(file = "ExcessDeath.png", plot = plt, units="px",width = 6000, height = 8000)
+
+
+#calculate 4 numbers in each plot
+
+########TEST AREA
+##Test succeed->Usage
+library(data.table)
+PreFE<- data.table(PredictFE)
+PreFE[,y_max := 430]
+PreFE[Municipality=="Rikuzentakadashi"
+      |Municipality=="Onagawamachi"
+      |Municipality=="Otsuchimachi"
+      |Municipality=="Minamisanrikumachi",y_max := 1100]
+
+plt <- ggplot(PreFE, aes(x = Year, group=Municipality)) +
+  geom_line(aes(y=Predict, color = "Estimated deaths",linetype="Estimated deaths")) + #Predicted deaths
+  geom_line(aes(y=Actual, color = "Actual deaths",linetype="Actual deaths")) + #Actual deaths
+  # Set breaks along both axes
+  scale_x_continuous(breaks = c(2000,2011,2017)) +
+  # ylim(0,450)+
+  
+  stat_difference(aes(ymin =Predict , ymax = Actual), alpha = 0.3) +
+  
+  # Colors for the lines
+  scale_color_manual(values = c("#3D85F7", "#C32E5A")) +
+  # Colors for the fill. They are lighter versions of the line colors.
+  # The third one is required because lines are sometimes equal
+  scale_fill_manual(
+    values = c(
+      colorspace::lighten("#3D85F7"), 
+      colorspace::lighten("#C32E5A"), 
+      "grey60"
+    ),
+    labels = c("More death", "Less death", "Same")
+  ) +
+  
+  geom_text(data = PreFE, 
+            mapping = aes(x=2003, y=layer_scales(plt)$y$range$range[2]-90, 
+                          label=paste(Actual)), 
+            col="black",
+            hjust=0) +
+  
+  # annotate("text", x = 2003, y = layer_scales(plt)$y$range$range[2]-90, 
+  #          label = paste(PreFE$Municipality)),col="black")+
+  # annotate("text", x = 2003, y = layer_scales(plt)$y$range$range[2]-30, 
+  #          label = "1112",col="#3D85F7")+
+  # annotate("text", x = 2016, y = layer_scales(plt)$y$range$range[2]-90, 
+  #          label = "1113",col="gray")+
+  # annotate("text", x = 2016, y = layer_scales(plt)$y$range$range[2]-30, 
+  #          label = "1114",col="#C32E5A")+
+  
+#topleft:excess mortality per 10,000 population during 2011-2017(black)
+#topright:undercount number (Predicted indirect death- Reported death)(blue)
+#bottomleft:total excess mortality(gray)
+#bottom right:undercount ratio:Predicted indirect death/reported indirect death(red)
+
+  facet_wrap(~Municipality, nrow = 14, scales = "free_y") +
+  
+  geom_blank(aes(y = y_max))
+
+ggsave(file = "ExcessDeath.png", plot = plt, units="px",width = 6000, height = 6500)
+
+
+
+
+
+
